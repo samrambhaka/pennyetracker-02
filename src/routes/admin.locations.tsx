@@ -138,7 +138,7 @@ function Column({
         {enabled && (
           <div className="space-y-2">
             <Input placeholder={`New ${title.slice(0, -1).toLowerCase()}`} value={name} onChange={(e) => setName(e.target.value)} />
-            {extraField && <Input placeholder={extraField.label} value={extra} onChange={(e) => setExtra(e.target.value)} />}
+            {extraField && <Input type={extraField.type ?? "text"} placeholder={extraField.label} value={extra} onChange={(e) => setExtra(e.target.value)} />}
             <Button size="sm" className="w-full" onClick={() => add.mutate()} disabled={!name || add.isPending}>
               <Plus className="h-3.5 w-3.5" /> Add
             </Button>

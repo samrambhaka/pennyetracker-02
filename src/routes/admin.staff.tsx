@@ -173,6 +173,7 @@ function AddStaffDialog({ panchayaths, wards, onClose }: { panchayaths: any[]; w
         .insert({
           full_name: form.full_name,
           phone: form.phone,
+          alt_phone: form.alt_phone || null,
           email: form.email || null,
           status: form.status,
         })

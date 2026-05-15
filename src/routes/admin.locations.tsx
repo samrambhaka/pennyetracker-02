@@ -172,6 +172,7 @@ function Column({
             </Button>
           </div>
         )}
+        {bulkAdd && <BulkAddWards panchayathId={bulkAdd.parentId} existingCount={data.length} />}
         <div className="max-h-80 space-y-1 overflow-y-auto">
           {!enabled && <p className="text-xs text-muted-foreground">Select a {parentField?.replace("_id", "")} first</p>}
           {data.map((row: any) => {

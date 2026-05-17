@@ -47,6 +47,8 @@ export type GraphConfig = {
   };
   /** Extra display under node name */
   subtitle?: (node: any) => string | null;
+  /** Optional filter restricting nodes to a parent (e.g. wards within a panchayath) */
+  parentFilter?: { column: string; value: string };
 };
 
 const DIRS: Direction[] = ["north", "south", "east", "west"];
@@ -102,11 +104,13 @@ export function GraphCanvas({ cfg }: { cfg: GraphConfig }) {
   const [search, setSearch] = useState("");
   const [dialog, setDialog] = useState<{ kind: "add" | "connect" | "create"; dir?: Direction } | null>(null);
 
-  // All nodes (for search and existing selection)
+  // All nodes (for search and existing selection), optionally scoped to a parent
   const { data: allNodes = [] } = useQuery({
-    queryKey: [cfg.nodesTable, "all"],
+    queryKey: [cfg.nodesTable, "all", cfg.parentFilter?.column, cfg.parentFilter?.value],
     queryFn: async () => {
-      const { data, error } = await supabase.from(cfg.nodesTable).select("*").order("name");
+      let q = supabase.from(cfg.nodesTable).select("*").order("name");
+      if (cfg.parentFilter) q = q.eq(cfg.parentFilter.column, cfg.parentFilter.value);
+      const { data, error } = await q;
       if (error) throw error;
       return data as any[];
     },
@@ -331,13 +335,14 @@ export function GraphCanvas({ cfg }: { cfg: GraphConfig }) {
         onCreate={(payload) => createNode.mutate(payload)}
         onConnect={(targetId, direction) => addConnection.mutate({ targetId, direction })}
         pending={createNode.isPending || addConnection.isPending}
+        lockedParentId={cfg.parentFilter?.value}
       />
     </div>
   );
 }
 
 function NodeDialog({
-  open, onClose, kind, dir, cfg, existing, excludeIds, onCreate, onConnect, pending,
+  open, onClose, kind, dir, cfg, existing, excludeIds, onCreate, onConnect, pending, lockedParentId,
 }: {
   open: boolean;
   onClose: () => void;
@@ -349,9 +354,10 @@ function NodeDialog({
   onCreate: (p: { name: string; parentId: string; direction?: Direction }) => void;
   onConnect: (targetId: string, direction: Direction) => void;
   pending: boolean;
+  lockedParentId?: string;
 }) {
   const [name, setName] = useState("");
-  const [parentId, setParentId] = useState("");
+  const [parentId, setParentId] = useState(lockedParentId ?? "");
   const [pickId, setPickId] = useState("");
   const [pickSearch, setPickSearch] = useState("");
 
@@ -372,7 +378,7 @@ function NodeDialog({
       .slice(0, 50);
   }, [existing, excludeIds, pickSearch]);
 
-  const reset = () => { setName(""); setParentId(""); setPickId(""); setPickSearch(""); };
+  const reset = () => { setName(""); setParentId(lockedParentId ?? ""); setPickId(""); setPickSearch(""); };
 
   const title =
     kind === "create"
@@ -415,16 +421,18 @@ function NodeDialog({
         ) : (
           <div className="space-y-2">
             <Input placeholder={`${cfg.label} name`} value={name} onChange={(e) => setName(e.target.value)} />
-            <select
-              value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-            >
-              <option value="">Select {cfg.parentRef.label}...</option>
-              {parents.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            {!lockedParentId && (
+              <select
+                value={parentId}
+                onChange={(e) => setParentId(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                <option value="">Select {cfg.parentRef.label}...</option>
+                {parents.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            )}
             <DialogFooter>
               <Button
                 disabled={!name || !parentId || pending}

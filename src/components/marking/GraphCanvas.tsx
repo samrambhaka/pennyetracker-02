@@ -421,16 +421,18 @@ function NodeDialog({
         ) : (
           <div className="space-y-2">
             <Input placeholder={`${cfg.label} name`} value={name} onChange={(e) => setName(e.target.value)} />
-            <select
-              value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-            >
-              <option value="">Select {cfg.parentRef.label}...</option>
-              {parents.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            {!lockedParentId && (
+              <select
+                value={parentId}
+                onChange={(e) => setParentId(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                <option value="">Select {cfg.parentRef.label}...</option>
+                {parents.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            )}
             <DialogFooter>
               <Button
                 disabled={!name || !parentId || pending}

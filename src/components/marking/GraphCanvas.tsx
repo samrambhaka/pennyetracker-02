@@ -378,7 +378,7 @@ function NodeDialog({
       .slice(0, 50);
   }, [existing, excludeIds, pickSearch]);
 
-  const reset = () => { setName(""); setParentId(""); setPickId(""); setPickSearch(""); };
+  const reset = () => { setName(""); setParentId(lockedParentId ?? ""); setPickId(""); setPickSearch(""); };
 
   const title =
     kind === "create"

@@ -315,11 +315,6 @@ export function MapPicker({ kind, apiKey, parents, parentId, onParentChange, par
           {mapState === "loading" && (
             <div className="flex h-[60vh] items-center justify-center text-sm text-muted-foreground">Loading map…</div>
           )}
-          {mapState === "error" && (
-            <div className="flex h-[60vh] items-center justify-center px-6 text-center text-sm text-destructive">
-              Failed to load Google Maps. Check that the API key is valid and that the Maps JavaScript API is enabled.
-            </div>
-          )}
           <div ref={mapRef} className="h-[60vh] w-full" style={{ display: mapState === "ready" ? "block" : "none" }} />
 
           {mapState === "ready" && (

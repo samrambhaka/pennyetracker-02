@@ -47,6 +47,8 @@ export type GraphConfig = {
   };
   /** Extra display under node name */
   subtitle?: (node: any) => string | null;
+  /** Optional scoping filter, e.g. only show wards belonging to a panchayath */
+  filter?: { key: string; value: string } | null;
 };
 
 const DIRS: Direction[] = ["north", "south", "east", "west"];

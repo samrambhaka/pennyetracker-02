@@ -1,41 +1,48 @@
 ## Goal
 
-When Google Maps fails to load (invalid key, API not enabled, network blocked, quota exceeded), fall back to a browser-native picker so users can still mark/save locations and view existing ones. Today both `/admin/mapping/panchayath`, `/admin/mapping/ward`, and `/map/panchayath` show only "Oops! Something went wrong" or "Failed to load Google Maps".
+On `/marking`, keep the existing N/S/E/W graph marking (it's not lost — it lives on `/marking/panchayath` and `/marking/ward`) and add a **Map** tab for picking geo-coordinates on a Leaflet/OpenStreetMap. All three live on one page as tabs.
 
-## Changes
+## New layout for `/marking`
 
-### 1. New component: `src/components/map/FallbackPicker.tsx`
-A no-Google-Maps picker that supports the same save flow as `MapPicker`:
-- Header: "Map provider unavailable — using browser GPS fallback" notice.
-- **Get my location** button → `navigator.geolocation.getCurrentPosition` (high-accuracy, 10s timeout). On success, sets a draft `{lat, lng}`.
-- **Manual entry**: two number inputs for latitude/longitude with validation (-90..90 / -180..180).
-- **Marked list** for the selected parent: shows each item with lat/lng (or "—"), an "Open in Google Maps" link (`https://www.google.com/maps?q=lat,lng`) and "Open in OSM" link as a true fallback view.
-- **Save / Cancel** buttons reuse the same Supabase update + IndexedDB cache write as `MapPicker`.
-- Same left column (parent select, search, item list) as `MapPicker` so the UX is consistent.
+```text
+/marking
+├── Tab: Panchayath   (existing N/S/E/W graph)
+├── Tab: Ward         (existing N/S/E/W graph, scoped per panchayath)
+└── Tab: Map pick     (Leaflet + OSM, sub-tabs: Panchayath | Ward)
+```
 
-### 2. Wire fallback into `src/components/map/MapPicker.tsx`
-- When `mapState === "error"` OR `!apiKey`, render `<FallbackPicker .../>` instead of the current error/empty card. Keep a small dismissable banner explaining why ("Google Maps unavailable — using browser GPS").
-- Extract the save mutation and parent/list rendering into shared hooks/helpers so both components stay in sync (or pass them down as props — whichever is smaller).
+The current hub cards page (`marking.index.tsx`) becomes a tabbed page. The two child routes (`/marking/panchayath`, `/marking/ward`) stay as deep-links and reuse the same components, so nothing existing breaks.
 
-### 3. Public viewer fallback: `src/routes/map.panchayath.tsx`
-- When `mapState === "error"` or `apiKey` is missing, render a list view of all marked panchayaths grouped by district, each with:
-  - Name + coords
-  - "Open in Google Maps" / "Open in OpenStreetMap" deep links
-  - "Show on browser map" → opens an OSM static image (`https://staticmap.openstreetmap.de/staticmap.php?...`) for a lightweight visual.
-- Keep the existing Google Map render when it works.
+## Map tab behaviour
 
-### 4. Loader resilience: `src/components/map/useGoogleMaps.ts`
-- Add a 10s timeout: if the script tag never fires `load` or `error`, force `state = "error"` so the fallback engages instead of spinning forever.
-- Reset the cached `scriptPromise` on error so a later valid key can retry.
+- Map: Leaflet via `react-leaflet` + OpenStreetMap tiles. No API key, no billing.
+- Sub-tabs inside the Map tab: **Panchayath** and **Ward**.
+- **Panchayath sub-tab**: dropdown of panchayaths → click on map to drop a pin → "Save" writes lat/lng to that panchayath row. Existing pins shown as markers; clicking one re-centers and lets you move it.
+- **Ward sub-tab**: pick a panchayath, then a ward → click map to drop pin → save to that ward row. Map auto-centers on the parent panchayath's pin if set.
+- "My location" button to center the map on the browser's geolocation.
+- Search box (OSM Nominatim, no key) to jump to a place by name.
 
-## Out of scope
-- Routing/turn-by-turn navigation (the current app doesn't use Google Directions; "navigation" here = map view + GPS pin).
-- Swapping Google Maps for an OSS map library (Leaflet/MapLibre) — can be a follow-up if you want a real interactive fallback map instead of links + static image.
+## Database additions
 
-## Technical notes
-- No DB schema changes. Reuses `panchayaths.latitude/longitude`, `wards.latitude/longitude`, `app_settings.google_maps_api_key`, and the existing `get_public_google_maps_key` RPC.
-- All browser-GPS code runs only in event handlers (no SSR concerns).
-- The "Use my location" button already exists inside `MapPicker`; the fallback path simply makes it usable even when Google Maps never loaded.
+Add `latitude` and `longitude` columns to both `panchayaths` and `wards` (nullable `double precision`). Migration only — RLS policies stay as they are.
 
-## Open question
-Do you want a real interactive offline map (Leaflet + OpenStreetMap tiles, ~40KB) as the fallback instead of the link/static-image approach? It's a bigger change but gives proper pan/zoom without any Google dependency. Reply "use leaflet" if yes.
+## Files
+
+- **Modify** `src/routes/marking.index.tsx` → tabbed UI (`shadcn/ui Tabs`):
+  - Tab 1 imports the panchayath graph component
+  - Tab 2 imports the ward graph component (with the panchayath picker we already built)
+  - Tab 3 is the new Map picker
+- **Extract** the body of `marking.panchayath.tsx` and `marking.ward.tsx` into small reusable components in `src/components/marking/` so both the tab and the standalone routes render the same UI.
+- **New** `src/components/marking/MapPicker.tsx` — the Leaflet map + sub-tabs + save logic.
+- **Install** `leaflet` and `react-leaflet` (plus `@types/leaflet`).
+- **DB migration**: `alter table panchayaths add column latitude double precision, add column longitude double precision;` (and same on `wards`).
+
+## What stays the same
+
+- The N/S/E/W graph marking is fully preserved — same `GraphCanvas` component, same behaviour, just now reachable from a tab as well as the existing routes.
+- The ward-scope-per-panchayath logic we just added stays.
+- No auth/role changes.
+
+## Open assumption
+
+The route lives at `/marking` (not `/admin/mapping`) since the existing graph marking already lives there and isn't admin-gated. If you want it moved/duplicated under `/admin/mapping` with admin auth instead, say so and I'll adjust before implementing.

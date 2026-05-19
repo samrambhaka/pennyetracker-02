@@ -49,6 +49,8 @@ export type GraphConfig = {
   subtitle?: (node: any) => string | null;
   /** Optional scoping filter, e.g. only show wards belonging to a panchayath */
   filter?: { key: string; value: string } | null;
+  /** Read-only mode: hides create/add/connect actions (public viewing) */
+  readOnly?: boolean;
 };
 
 const DIRS: Direction[] = ["north", "south", "east", "west"];
@@ -235,7 +237,7 @@ export function GraphCanvas({ cfg }: { cfg: GraphConfig }) {
           style: { stroke: "hsl(var(--primary))", strokeWidth: 2 },
           labelStyle: { fontSize: 10, textTransform: "uppercase", fontWeight: 600 },
         });
-      } else {
+      } else if (!cfg.readOnly) {
         ns.push({
           id: `ph-${dir}`,
           type: "placeholder",
@@ -295,10 +297,13 @@ export function GraphCanvas({ cfg }: { cfg: GraphConfig }) {
             </div>
           )}
         </div>
-        <Button onClick={() => setDialog({ kind: "create" })}>
-          <Plus className="h-4 w-4" /> New {cfg.label}
-        </Button>
+        {!cfg.readOnly && (
+          <Button onClick={() => setDialog({ kind: "create" })}>
+            <Plus className="h-4 w-4" /> New {cfg.label}
+          </Button>
+        )}
       </Card>
+
 
       {/* Canvas */}
       <Card className="relative flex-1 overflow-hidden">

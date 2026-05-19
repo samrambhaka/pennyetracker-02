@@ -302,6 +302,8 @@ export function GraphCanvas({ cfg }: { cfg: GraphConfig }) {
             <Plus className="h-4 w-4" /> New {cfg.label}
           </Button>
         )}
+      </Card>
+
 
       {/* Canvas */}
       <Card className="relative flex-1 overflow-hidden">

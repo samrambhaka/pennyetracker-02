@@ -1,48 +1,56 @@
-## Goal
+# Location Tracking — Plan
 
-On `/marking`, keep the existing N/S/E/W graph marking (it's not lost — it lives on `/marking/panchayath` and `/marking/ward`) and add a **Map** tab for picking geo-coordinates on a Leaflet/OpenStreetMap. All three live on one page as tabs.
+Wire up the "Location Tracking" card on `/landing` to a new public page that lets anyone pick a source and destination (panchayath or ward, mixed allowed) and see:
 
-## New layout for `/marking`
+1. The directional hop path between them using existing N/S/E/W connections.
+2. Straight-line distance (km) between their saved lat/lng.
+3. A "Navigate" button that opens the device's default map app (Google Maps on Android, Apple Maps on iOS) using a `geo:` URI with a maps.google.com fallback.
 
-```text
-/marking
-├── Tab: Panchayath   (existing N/S/E/W graph)
-├── Tab: Ward         (existing N/S/E/W graph, scoped per panchayath)
-└── Tab: Map pick     (Leaflet + OSM, sub-tabs: Panchayath | Ward)
-```
+A second card "Map Navigation" on `/landing` jumps straight to the navigation step (pick a single destination → open in device map).
 
-The current hub cards page (`marking.index.tsx`) becomes a tabbed page. The two child routes (`/marking/panchayath`, `/marking/ward`) stay as deep-links and reuse the same components, so nothing existing breaks.
+## Pages & routes
 
-## Map tab behaviour
+- `src/routes/tracking.tsx` — public Location Tracking page (no auth).
+  - Two selectors side-by-side: **From** and **To**, each with:
+    - Level toggle: Panchayath / Ward
+    - Panchayath dropdown (always)
+    - Ward dropdown (only when level = Ward, filtered by chosen panchayath)
+  - "Find route" button → results panel:
+    - **Path**: BFS over N/S/E/W edges showing each hop with direction arrows (e.g. `Ward A → (east) → Ward B → (north) → Ward C`). If no path exists, show "No connected route".
+    - **Distance**: Haversine km between source and destination lat/lng. If either is missing coordinates, hide the distance line with a small note.
+    - **Navigate** button → opens `geo:lat,lng?q=lat,lng(Name)` with `https://www.google.com/maps/dir/?api=1&origin=...&destination=...` as href fallback.
+- `src/routes/navigate.tsx` — public Map Navigation page.
+  - Pick a destination (panchayath or ward) → "Open in Maps" button using same geo URI logic. Optional source pin via browser geolocation.
 
-- Map: Leaflet via `react-leaflet` + OpenStreetMap tiles. No API key, no billing.
-- Sub-tabs inside the Map tab: **Panchayath** and **Ward**.
-- **Panchayath sub-tab**: dropdown of panchayaths → click on map to drop a pin → "Save" writes lat/lng to that panchayath row. Existing pins shown as markers; clicking one re-centers and lets you move it.
-- **Ward sub-tab**: pick a panchayath, then a ward → click map to drop pin → save to that ward row. Map auto-centers on the parent panchayath's pin if set.
-- "My location" button to center the map on the browser's geolocation.
-- Search box (OSM Nominatim, no key) to jump to a place by name.
+## Landing page wiring (`src/routes/landing.tsx`)
 
-## Database additions
+- Set `to: "/tracking"` on the **Location Tracking** card.
+- Set `to: "/navigate"` on the **Update Location** card → rename to **Map Navigation** with `Navigation` icon (or add a 5th card if user prefers keeping Update Location separate — defaulting to rename since Update Location is currently inert).
 
-Add `latitude` and `longitude` columns to both `panchayaths` and `wards` (nullable `double precision`). Migration only — RLS policies stay as they are.
+## Data
 
-## Files
+Reads only — no schema changes. Uses tables already present:
+- `panchayaths` (id, name, latitude, longitude)
+- `wards` (id, name, panchayath_id, latitude, longitude)
+- `panchayath_connections` (source_panchayath_id, target_panchayath_id, direction)
+- `ward_connections` (source_ward_id, target_ward_id, direction)
 
-- **Modify** `src/routes/marking.index.tsx` → tabbed UI (`shadcn/ui Tabs`):
-  - Tab 1 imports the panchayath graph component
-  - Tab 2 imports the ward graph component (with the panchayath picker we already built)
-  - Tab 3 is the new Map picker
-- **Extract** the body of `marking.panchayath.tsx` and `marking.ward.tsx` into small reusable components in `src/components/marking/` so both the tab and the standalone routes render the same UI.
-- **New** `src/components/marking/MapPicker.tsx` — the Leaflet map + sub-tabs + save logic.
-- **Install** `leaflet` and `react-leaflet` (plus `@types/leaflet`).
-- **DB migration**: `alter table panchayaths add column latitude double precision, add column longitude double precision;` (and same on `wards`).
+Cross-level routing (panchayath ↔ ward) is resolved by treating a ward as belonging to its parent panchayath: if the source is a ward and the target is a panchayath, BFS on ward edges first inside the source's panchayath, then hop via panchayath edges, then descend into the target. Kept simple: if mixed selection and no direct strategy works, fall back to distance-only.
 
-## What stays the same
+## Technical details
 
-- The N/S/E/W graph marking is fully preserved — same `GraphCanvas` component, same behaviour, just now reachable from a tab as well as the existing routes.
-- The ward-scope-per-panchayath logic we just added stays.
-- No auth/role changes.
+- Queries via `@tanstack/react-query` + `supabase` client (public, RLS already allows reads on these tables based on existing pages).
+- Haversine helper in `src/lib/geo.ts`.
+- BFS helper in `src/lib/route-graph.ts` returning `{ nodes: [{id,name,kind}], directions: ["N"|"S"|"E"|"W"] }`.
+- Geo URI helper in `src/lib/map-link.ts`:
+  ```ts
+  geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(name)})
+  ```
+  with `https://www.google.com/maps/dir/?api=1&...` fallback set as `href` so desktop browsers still work.
+- Tailwind + existing shadcn `Select`, `Card`, `Button`, `Tabs` components — no new deps.
 
-## Open assumption
+## Out of scope
 
-The route lives at `/marking` (not `/admin/mapping`) since the existing graph marking already lives there and isn't admin-gated. If you want it moved/duplicated under `/admin/mapping` with admin auth instead, say so and I'll adjust before implementing.
+- Live GPS tracking of moving partners.
+- Embedded interactive map (user chose device map app).
+- Auth gating (page is public).

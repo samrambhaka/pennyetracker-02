@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrackingRouteImport } from './routes/tracking'
+import { Route as NavigateRouteImport } from './routes/navigate'
 import { Route as LandingRouteImport } from './routes/landing'
 import { Route as DeliveryPartnersRouteImport } from './routes/delivery-partners'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -22,6 +24,16 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminStaffRouteImport } from './routes/admin.staff'
 import { Route as AdminLocationsRouteImport } from './routes/admin.locations'
 
+const TrackingRoute = TrackingRouteImport.update({
+  id: '/tracking',
+  path: '/tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NavigateRoute = NavigateRouteImport.update({
+  id: '/navigate',
+  path: '/navigate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LandingRoute = LandingRouteImport.update({
   id: '/landing',
   path: '/landing',
@@ -89,6 +101,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
+  '/navigate': typeof NavigateRoute
+  '/tracking': typeof TrackingRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/users': typeof AdminUsersRoute
@@ -102,6 +116,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
+  '/navigate': typeof NavigateRoute
+  '/tracking': typeof TrackingRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/users': typeof AdminUsersRoute
@@ -117,6 +133,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
+  '/navigate': typeof NavigateRoute
+  '/tracking': typeof TrackingRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/users': typeof AdminUsersRoute
@@ -133,6 +151,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/delivery-partners'
     | '/landing'
+    | '/navigate'
+    | '/tracking'
     | '/admin/locations'
     | '/admin/staff'
     | '/admin/users'
@@ -146,6 +166,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/delivery-partners'
     | '/landing'
+    | '/navigate'
+    | '/tracking'
     | '/admin/locations'
     | '/admin/staff'
     | '/admin/users'
@@ -160,6 +182,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/delivery-partners'
     | '/landing'
+    | '/navigate'
+    | '/tracking'
     | '/admin/locations'
     | '/admin/staff'
     | '/admin/users'
@@ -175,6 +199,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DeliveryPartnersRoute: typeof DeliveryPartnersRoute
   LandingRoute: typeof LandingRoute
+  NavigateRoute: typeof NavigateRoute
+  TrackingRoute: typeof TrackingRoute
   MarkingPanchayathRoute: typeof MarkingPanchayathRoute
   MarkingWardRoute: typeof MarkingWardRoute
   MarkingIndexRoute: typeof MarkingIndexRoute
@@ -182,6 +208,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tracking': {
+      id: '/tracking'
+      path: '/tracking'
+      fullPath: '/tracking'
+      preLoaderRoute: typeof TrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/navigate': {
+      id: '/navigate'
+      path: '/navigate'
+      fullPath: '/navigate'
+      preLoaderRoute: typeof NavigateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/landing': {
       id: '/landing'
       path: '/landing'
@@ -291,6 +331,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DeliveryPartnersRoute: DeliveryPartnersRoute,
   LandingRoute: LandingRoute,
+  NavigateRoute: NavigateRoute,
+  TrackingRoute: TrackingRoute,
   MarkingPanchayathRoute: MarkingPanchayathRoute,
   MarkingWardRoute: MarkingWardRoute,
   MarkingIndexRoute: MarkingIndexRoute,
@@ -298,3 +340,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

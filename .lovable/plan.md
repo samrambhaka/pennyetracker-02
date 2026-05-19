@@ -1,40 +1,56 @@
-## Goal
+# Location Tracking — Plan
 
-Turn `/map/panchayath` into a multi-view public map with tabs. The current pin-map view stays as the default; two new views are added per your request.
+Wire up the "Location Tracking" card on `/landing` to a new public page that lets anyone pick a source and destination (panchayath or ward, mixed allowed) and see:
 
-> Note: you mentioned "three features" but listed only two. I'll plan with the two below. If there's a third, tell me and I'll add it.
+1. The directional hop path between them using existing N/S/E/W connections.
+2. Straight-line distance (km) between their saved lat/lng.
+3. A "Navigate" button that opens the device's default map app (Google Maps on Android, Apple Maps on iOS) using a `geo:` URI with a maps.google.com fallback.
 
-## Tabs on `/map/panchayath`
+A second card "Map Navigation" on `/landing` jumps straight to the navigation step (pick a single destination → open in device map).
 
-```
-[ Pin map ] [ Connections ] [ Delivery staff ]
-```
+## Pages & routes
 
-### Tab 1 — Pin map (unchanged)
-Current Google-Map view with all marked panchayath pins.
+- `src/routes/tracking.tsx` — public Location Tracking page (no auth).
+  - Two selectors side-by-side: **From** and **To**, each with:
+    - Level toggle: Panchayath / Ward
+    - Panchayath dropdown (always)
+    - Ward dropdown (only when level = Ward, filtered by chosen panchayath)
+  - "Find route" button → results panel:
+    - **Path**: BFS over N/S/E/W edges showing each hop with direction arrows (e.g. `Ward A → (east) → Ward B → (north) → Ward C`). If no path exists, show "No connected route".
+    - **Distance**: Haversine km between source and destination lat/lng. If either is missing coordinates, hide the distance line with a small note.
+    - **Navigate** button → opens `geo:lat,lng?q=lat,lng(Name)` with `https://www.google.com/maps/dir/?api=1&origin=...&destination=...` as href fallback.
+- `src/routes/navigate.tsx` — public Map Navigation page.
+  - Pick a destination (panchayath or ward) → "Open in Maps" button using same geo URI logic. Optional source pin via browser geolocation.
 
-### Tab 2 — Connections (panchayath → ward drill-down)
-Two sub-modes inside the tab:
+## Landing page wiring (`src/routes/landing.tsx`)
 
-- **Panchayath level** (default): N/S/E/W graph using existing `GraphCanvas` with `panchayaths` / `panchayath_connections`. **Read-only** for public visitors — hide the "New", "Add", "Connect existing" actions; clicking a connected neighbour re-centers, same as today.
-- **Click center panchayath → Ward level**: switches the same canvas to `wards` / `ward_connections` scoped to that panchayath (`filter: { key: "panchayath_id", value: <id> }`). A breadcrumb `Panchayaths / <Name> wards` with a Back button returns to panchayath level.
+- Set `to: "/tracking"` on the **Location Tracking** card.
+- Set `to: "/navigate"` on the **Update Location** card → rename to **Map Navigation** with `Navigation` icon (or add a 5th card if user prefers keeping Update Location separate — defaulting to rename since Update Location is currently inert).
 
-### Tab 3 — Delivery staff
-Same panchayath N/S/E/W graph, but each panchayath card shows the count of active delivery staff assigned to it (from `delivery_staff_panchayaths` + `delivery_staff` where `status='active'`). Clicking the center panchayath opens a side panel listing the staff (name, phone, assigned wards) — reusing the data shape from `get_public_delivery_partners`.
+## Data
+
+Reads only — no schema changes. Uses tables already present:
+- `panchayaths` (id, name, latitude, longitude)
+- `wards` (id, name, panchayath_id, latitude, longitude)
+- `panchayath_connections` (source_panchayath_id, target_panchayath_id, direction)
+- `ward_connections` (source_ward_id, target_ward_id, direction)
+
+Cross-level routing (panchayath ↔ ward) is resolved by treating a ward as belonging to its parent panchayath: if the source is a ward and the target is a panchayath, BFS on ward edges first inside the source's panchayath, then hop via panchayath edges, then descend into the target. Kept simple: if mixed selection and no direct strategy works, fall back to distance-only.
 
 ## Technical details
 
-- New file: `src/routes/map.panchayath.tsx` gets a `<Tabs>` wrapper; existing pin-map body moves into `TabsContent value="pin"`.
-- `GraphCanvas` gains a `readOnly?: boolean` prop. When true: hide "New", placeholder "Add"/"Connect existing" buttons, and skip mutations. Default false to keep `/admin/marking/*` and `/admin/mapping/*` unchanged.
-- New small component `PublicConnectionsView` wraps `GraphCanvas` and handles the panchayath→ward drill (local state `wardOfPanchayathId`).
-- New small component `PublicDeliveryView` wraps `GraphCanvas` in `readOnly`, fetches `get_public_delivery_partners`, and shows count badge on the centered card + side panel on click.
-- RLS: `panchayaths` and `wards` are `authenticated`-read only. To keep this public, add `anon` SELECT policies (read-only) for `panchayaths`, `wards`, `panchayath_connections`, `ward_connections` — OR keep the page authenticated. **Decision needed** (see below).
-- No DB schema changes; one optional RLS migration.
+- Queries via `@tanstack/react-query` + `supabase` client (public, RLS already allows reads on these tables based on existing pages).
+- Haversine helper in `src/lib/geo.ts`.
+- BFS helper in `src/lib/route-graph.ts` returning `{ nodes: [{id,name,kind}], directions: ["N"|"S"|"E"|"W"] }`.
+- Geo URI helper in `src/lib/map-link.ts`:
+  ```ts
+  geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(name)})
+  ```
+  with `https://www.google.com/maps/dir/?api=1&...` fallback set as `href` so desktop browsers still work.
+- Tailwind + existing shadcn `Select`, `Card`, `Button`, `Tabs` components — no new deps.
 
 ## Out of scope
-- Editing connections from the public page (admin pages keep that).
-- Map-overlay polylines on Google Map (graph view only, matches existing marking UI).
-- `/map/panchayath`'s pin-map behaviour itself.
 
-## Open question
-Should the new Connections + Delivery tabs be publicly viewable (requires adding `anon` read RLS) or require login? Default in this plan: **public read-only** with RLS additions.
+- Live GPS tracking of moving partners.
+- Embedded interactive map (user chose device map app).
+- Auth gating (page is public).

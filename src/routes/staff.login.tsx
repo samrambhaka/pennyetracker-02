@@ -31,9 +31,9 @@ function StaffLoginPage() {
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
       const list = (roles ?? []).map((r) => r.role);
       if (list.includes("admin") || list.includes("super_admin")) {
-        navigate({ to: "/admin" });
-      } else if (list.includes("delivery")) {
         navigate({ to: "/landing" });
+      } else if (list.includes("delivery")) {
+        navigate({ to: "/delivery-partners" });
       } else {
         navigate({ to: "/staff/pending" });
       }

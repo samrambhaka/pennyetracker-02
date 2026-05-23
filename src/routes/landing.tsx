@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Truck, MapPin, Navigation, MapPinned, Map as MapIcon } from "lucide-react";
@@ -52,6 +54,16 @@ const features = [
 ];
 
 function Landing() {
+  const { user, roles, loading, isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading || !user) return;
+    if (isAdmin) return;
+    if (roles.includes("delivery")) navigate({ to: "/delivery-partners" });
+    else navigate({ to: "/staff/pending" });
+  }, [user, roles, loading, isAdmin, navigate]);
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-[oklch(0.98_0.01_240)] via-background to-[oklch(0.95_0.03_250)]">
       <nav className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">

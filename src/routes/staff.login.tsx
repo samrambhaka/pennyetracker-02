@@ -23,12 +23,21 @@ function StaffLoginPage() {
     setErr(null);
     setLoading(true);
     try {
-      const normalized = phone.startsWith("+") ? phone : `+${phone}`;
-      const { data, error } = await supabase.auth.signInWithPassword({ phone: normalized, password });
+      const { data, error } = await supabase.functions.invoke("staff-login", {
+        body: { phone, password },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.session) throw new Error("Sign-in failed");
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+      if (sessionError) throw sessionError;
       const uid = data.user?.id;
       if (!uid) throw new Error("Sign-in failed");
-      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+      const { data: roles, error: rolesError } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+      if (rolesError) throw rolesError;
       const list = (roles ?? []).map((r) => r.role);
       if (list.includes("admin") || list.includes("super_admin")) {
         navigate({ to: "/landing" });

@@ -58,11 +58,23 @@ function Landing() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading) return;
+    if (!user) {
+      navigate({ to: "/auth" });
+      return;
+    }
     if (isAdmin) return;
     if (roles.includes("delivery")) navigate({ to: "/delivery-partners" });
     else navigate({ to: "/staff/pending" });
   }, [user, roles, loading, isAdmin, navigate]);
+
+  if (loading || !user || !isAdmin) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-4 text-sm text-muted-foreground">
+        Checking authentication…
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[oklch(0.98_0.01_240)] via-background to-[oklch(0.95_0.03_250)]">

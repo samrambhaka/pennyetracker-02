@@ -23,25 +23,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadRoles = async (uid: string) => {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+    const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+    if (error) {
+      console.error("Failed to load roles", error);
+      setRoles([]);
+      return;
+    }
     setRoles((data ?? []).map((r) => r.role as Role));
   };
 
   useEffect(() => {
+    let mounted = true;
+
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (!mounted) return;
       setSession(s);
       if (s?.user) {
-        setTimeout(() => loadRoles(s.user.id), 0);
+        setLoading(true);
+        setTimeout(() => {
+          if (!mounted) return;
+          loadRoles(s.user.id).finally(() => {
+            if (mounted) setLoading(false);
+          });
+        }, 0);
       } else {
         setRoles([]);
+        setLoading(false);
       }
     });
     supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
       setSession(data.session);
-      if (data.session?.user) loadRoles(data.session.user.id).finally(() => setLoading(false));
+      if (data.session?.user) loadRoles(data.session.user.id).finally(() => mounted && setLoading(false));
       else setLoading(false);
+    }).catch((error) => {
+      console.error("Failed to restore auth session", error);
+      if (mounted) setLoading(false);
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const value: AuthCtx = {

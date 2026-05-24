@@ -11,6 +11,7 @@ export const Route = createFileRoute("/admin")({
 });
 
 const nav = [
+  { to: "/landing", label: "Home", icon: Home, exact: true },
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/staff", label: "Delivery Staff", icon: Users },
   { to: "/admin/locations", label: "Locations", icon: MapPin },

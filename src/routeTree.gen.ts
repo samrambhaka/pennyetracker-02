@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrackingRouteImport } from './routes/tracking'
+import { Route as StaffRouteImport } from './routes/staff'
 import { Route as NavigateRouteImport } from './routes/navigate'
 import { Route as LandingRouteImport } from './routes/landing'
 import { Route as DeliveryPartnersRouteImport } from './routes/delivery-partners'
@@ -27,6 +28,11 @@ import { Route as AdminLocationsRouteImport } from './routes/admin.locations'
 const TrackingRoute = TrackingRouteImport.update({
   id: '/tracking',
   path: '/tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffRoute = StaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NavigateRoute = NavigateRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
   '/navigate': typeof NavigateRoute
+  '/staff': typeof StaffRoute
   '/tracking': typeof TrackingRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/staff': typeof AdminStaffRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
   '/navigate': typeof NavigateRoute
+  '/staff': typeof StaffRoute
   '/tracking': typeof TrackingRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/staff': typeof AdminStaffRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
   '/navigate': typeof NavigateRoute
+  '/staff': typeof StaffRoute
   '/tracking': typeof TrackingRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/staff': typeof AdminStaffRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/delivery-partners'
     | '/landing'
     | '/navigate'
+    | '/staff'
     | '/tracking'
     | '/admin/locations'
     | '/admin/staff'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/delivery-partners'
     | '/landing'
     | '/navigate'
+    | '/staff'
     | '/tracking'
     | '/admin/locations'
     | '/admin/staff'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/delivery-partners'
     | '/landing'
     | '/navigate'
+    | '/staff'
     | '/tracking'
     | '/admin/locations'
     | '/admin/staff'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   DeliveryPartnersRoute: typeof DeliveryPartnersRoute
   LandingRoute: typeof LandingRoute
   NavigateRoute: typeof NavigateRoute
+  StaffRoute: typeof StaffRoute
   TrackingRoute: typeof TrackingRoute
   MarkingPanchayathRoute: typeof MarkingPanchayathRoute
   MarkingWardRoute: typeof MarkingWardRoute
@@ -213,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/tracking'
       fullPath: '/tracking'
       preLoaderRoute: typeof TrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/navigate': {
@@ -332,6 +352,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeliveryPartnersRoute: DeliveryPartnersRoute,
   LandingRoute: LandingRoute,
   NavigateRoute: NavigateRoute,
+  StaffRoute: StaffRoute,
   TrackingRoute: TrackingRoute,
   MarkingPanchayathRoute: MarkingPanchayathRoute,
   MarkingWardRoute: MarkingWardRoute,
@@ -340,3 +361,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

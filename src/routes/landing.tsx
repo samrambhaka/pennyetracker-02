@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Truck, MapPin, Navigation, MapPinned } from "lucide-react";
+import { Truck, MapPin, Navigation, MapPinned, ShieldCheck, User } from "lucide-react";
 import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/landing")({
@@ -58,11 +58,15 @@ function Landing() {
             <Button variant="ghost" size="sm" asChild>
               <Link to="/landing">Home</Link>
             </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/delivery-partners">Partners</Link>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/auth" search={{ role: "staff" }}>
+                <User className="mr-1 h-4 w-4" /> Staff Login
+              </Link>
             </Button>
             <Button size="sm" asChild>
-              <Link to="/auth">Get Started</Link>
+              <Link to="/auth" search={{ role: "admin" }}>
+                <ShieldCheck className="mr-1 h-4 w-4" /> Admin Login
+              </Link>
             </Button>
           </div>
         </div>

@@ -5,20 +5,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { ShieldCheck, Truck } from "lucide-react";
+
+type RoleParam = "admin" | "staff";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    role: (search.role === "admin" ? "admin" : "staff") as RoleParam,
+  }),
   component: AuthPage,
   head: () => ({ meta: [{ title: "Sign in — Penny-eTracker" }] }),
 });
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { role } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const target = role === "admin" ? "/admin" : "/staff";
+  const Icon = role === "admin" ? ShieldCheck : Truck;
+  const label = role === "admin" ? "Admin" : "Staff";
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -30,16 +41,16 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/admin`,
-            data: { full_name: name },
+            emailRedirectTo: `${window.location.origin}${target}`,
+            data: { full_name: name, role },
           },
         });
         if (error) throw error;
-        navigate({ to: "/admin" });
+        navigate({ to: target });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/admin" });
+        navigate({ to: target });
       }
     } catch (e: any) {
       setErr(e.message ?? "Something went wrong");
@@ -48,13 +59,22 @@ function AuthPage() {
     }
   };
 
+  const switchRole = role === "admin" ? "staff" : "admin";
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[oklch(0.98_0.01_240)] to-[oklch(0.95_0.03_250)] px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{mode === "signin" ? "Welcome back" : "Create your account"}</CardTitle>
+          <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon className="h-5 w-5" />
+          </div>
+          <CardTitle>
+            {label} {mode === "signin" ? "Login" : "Sign up"}
+          </CardTitle>
           <CardDescription>
-            {mode === "signin" ? "Sign in to access the admin panel." : "Sign up to get started."}
+            {mode === "signin"
+              ? `Sign in to your ${label.toLowerCase()} account.`
+              : `Create a new ${label.toLowerCase()} account.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -75,7 +95,7 @@ function AuthPage() {
             </div>
             {err && <p className="text-sm text-destructive">{err}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Sign up"}
+              {loading ? "Please wait…" : mode === "signin" ? `Sign in as ${label}` : `Sign up as ${label}`}
             </Button>
           </form>
           <button
@@ -84,6 +104,13 @@ function AuthPage() {
           >
             {mode === "signin" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
           </button>
+          <Link
+            to="/auth"
+            search={{ role: switchRole as RoleParam }}
+            className="mt-2 block text-center text-xs text-muted-foreground hover:text-foreground"
+          >
+            Switch to {switchRole} login
+          </Link>
           <Link to="/landing" className="mt-2 block text-center text-xs text-muted-foreground hover:text-foreground">
             ← Back to home
           </Link>

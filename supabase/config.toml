@@ -1,7 +1,1 @@
-project_id = "mxqhhjchktbnvfcyvbiy"
-
-[functions.staff-signup]
-verify_jwt = false
-
-[functions.staff-login]
-verify_jwt = false
+project_id = "lazuuokqnsleyelnihtk"

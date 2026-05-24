@@ -33,43 +33,6 @@ function StaffPage() {
   const [editing, setEditing] = useState<Staff | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  type PendingStaff = { id: string; full_name: string; phone: string; created_at: string; panchayaths: string[]; wards: string[] };
-  const callApproval = async (body: any) => {
-    const { data, error } = await supabase.functions.invoke("staff-approval", { body });
-    if (error) throw new Error(error.message);
-    if (data?.error) throw new Error(data.error);
-    return data;
-  };
-
-  const { data: pending = [], isLoading: pendingLoading } = useQuery({
-    queryKey: ["staff-pending"],
-    queryFn: async (): Promise<PendingStaff[]> => {
-      const data = await callApproval({ action: "list" });
-      return data.pending ?? [];
-    },
-  });
-
-  const approve = useMutation({
-    mutationFn: (vars: { staff_id: string; role: "admin" | "delivery" }) =>
-      callApproval({ action: "approve", ...vars }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["staff-pending"] });
-      qc.invalidateQueries({ queryKey: ["staff"] });
-      toast.success("Staff approved");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const reject = useMutation({
-    mutationFn: (staff_id: string) => callApproval({ action: "reject", staff_id }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["staff-pending"] });
-      qc.invalidateQueries({ queryKey: ["staff"] });
-      toast.success("Staff rejected");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ["staff"],
     queryFn: async () => {
@@ -143,42 +106,6 @@ function StaffPage() {
           )}
         </Dialog>
       </div>
-
-      {(pendingLoading || pending.length > 0) && (
-        <Card className="mt-6">
-          <div className="border-b p-3">
-            <h2 className="text-sm font-semibold">Pending Approvals</h2>
-            <p className="text-xs text-muted-foreground">Staff who signed up and are waiting for super admin approval.</p>
-          </div>
-          <div className="divide-y">
-            {pendingLoading && <div className="p-4 text-sm text-muted-foreground">Loading…</div>}
-            {!pendingLoading && pending.length === 0 && (
-              <div className="p-4 text-sm text-muted-foreground">No pending requests.</div>
-            )}
-            {pending.map((p) => (
-              <div key={p.id} className="flex flex-wrap items-center gap-2 p-3">
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate">{p.full_name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {p.phone}
-                    {p.panchayaths.length > 0 ? ` · ${p.panchayaths.join(", ")}` : ""}
-                    {p.wards.length > 0 ? ` · ${p.wards.join(", ")}` : ""}
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" disabled={approve.isPending} onClick={() => approve.mutate({ staff_id: p.id, role: "delivery" })}>
-                  Approve as Delivery
-                </Button>
-                <Button size="sm" disabled={approve.isPending} onClick={() => approve.mutate({ staff_id: p.id, role: "admin" })}>
-                  Approve as Admin
-                </Button>
-                <Button size="sm" variant="destructive" disabled={reject.isPending} onClick={() => reject.mutate(p.id)}>
-                  Reject
-                </Button>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       <Card className="mt-6 divide-y">
         {isLoading && <div className="p-6 text-center text-muted-foreground">Loading…</div>}
